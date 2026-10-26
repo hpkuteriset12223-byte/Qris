@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QRIS</title>
+    <title>QRIS Base64</title>
+    <!-- Digunakan QRCode.toDataURL dari library qrcode.min.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         * {
@@ -19,9 +20,9 @@
             align-items: center;
             background-color: #ffffff;
         }
-        #qrcode canvas, #qrcode img {
-            width: 90vw !important;
-            height: 90vw !important;
+        #qris-img {
+            width: 90vw;
+            height: 90vw;
             max-width: 450px;
             max-height: 450px;
             object-fit: contain;
@@ -30,14 +31,15 @@
 </head>
 <body>
 
-    <div id="qrcode"></div>
+    <!-- Gambar akan ditampilkan lewat src berupa string Base64 -->
+    <img id="qris-img" alt="QRIS Code" />
 
     <script>
         const DEFAULT_PAYLOAD = "00020101021126570011ID.DANA.WWW011893600915303544414902090354441490303UMI51440014ID.CO.QRIS.WWW0215ID10266027894750303UMI5204549953033605802ID5909TOKO SUKI6015Kota Jakarta Pu610510210630417E0";
 
         window.onload = function() {
             let amount = getAmountFromURL() || 0;
-            generateDynamicQRIS(amount);
+            generateDynamicQRISBase64(amount);
         };
 
         function getAmountFromURL() {
@@ -97,7 +99,7 @@
             return hex.padStart(4, '0');
         }
 
-        function generateDynamicQRIS(amount) {
+        function generateDynamicQRISBase64(amount) {
             try {
                 let tags = parseTLV(DEFAULT_PAYLOAD);
 
@@ -113,13 +115,30 @@
                 let newPayload = buildTLV(tags) + "6304";
                 let finalQRIS = newPayload + calculateCRC16(newPayload);
 
-                document.getElementById('qrcode').innerHTML = '';
-                new QRCode(document.getElementById('qrcode'), {
+                // Buat temporary container untuk merender QRCode ke Canvas
+                let tempDiv = document.createElement('div');
+                let qrcode = new QRCode(tempDiv, {
                     text: finalQRIS,
                     width: 500,
                     height: 500,
                     correctLevel: QRCode.CorrectLevel.M
                 });
+
+                // Ambil data Base64 dari canvas yang dibuat oleh library
+                setTimeout(() => {
+                    let canvas = tempDiv.querySelector('canvas');
+                    if (canvas) {
+                        // Mengubah canvas menjadi URL Base64 (data:image/png;base64,...)
+                        let base64Image = canvas.toDataURL("image/png");
+                        
+                        // Set nilai src dari elemen img
+                        document.getElementById('qris-img').src = base64Image;
+
+                        // Jika butuh nilai string Base64-nya saja:
+                        console.log("String Base64 QRIS:", base64Image);
+                    }
+                }, 50);
+
             } catch (err) {
                 console.error("Gagal memproses QRIS", err);
             }
