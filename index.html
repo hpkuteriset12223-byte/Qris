@@ -3,131 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generator QRIS Dinamis Otomatis</title>
+    <title>Pembayaran QRIS - TOKO SUKI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 p-4 flex items-center justify-center min-h-screen">
+<body class="bg-slate-900 text-slate-100 flex items-center justify-center min-h-screen p-4">
 
-    <div class="max-w-md w-full bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700 my-4">
-        <h1 class="text-2xl font-bold text-center mb-1 text-emerald-400">QRIS Dinamis Generator</h1>
-        <p class="text-xs text-slate-400 text-center mb-6">Konversi QRIS Statis ke Dinamis dengan Nominal Otomatis via URL</p>
-
-        <!-- Container QRIS Dinamis Siap Scan -->
-        <div id="resultContainer" class="text-center bg-slate-900 p-5 rounded-xl border border-slate-700 mb-6">
-            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">TOKO SUKI</h2>
-            <div id="nominalText" class="text-emerald-400 font-extrabold text-2xl mb-4">Rp 0</div>
-            
-            <div class="bg-white p-4 rounded-xl inline-block shadow-md">
-                <div id="qrcode"></div>
-            </div>
-
-            <div class="mt-4 flex gap-2 justify-center">
-                <button onclick="downloadQR()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-4 py-2.5 rounded-lg font-medium transition shadow-md">
-                    Download Gambar QR
-                </button>
-            </div>
-        </div>
-
-        <div class="space-y-4">
-            <!-- Input Nominal -->
-            <div>
-                <label class="block text-sm font-medium mb-1 text-slate-300">Nominal Pembayaran (Rp)</label>
-                <input type="number" id="amountInput" placeholder="Contoh: 10000" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none font-semibold text-emerald-400" oninput="generateDynamicQRIS()">
-                <p class="text-[11px] text-slate-400 mt-1">💡 *Tips: Anda bisa menyematkan nominal di ujung link URL, contoh:<br>
-                <code class="text-emerald-400 font-mono">website.com/?amount=10000</code> atau <code class="text-emerald-400 font-mono">website.com/?10000</code></p>
-            </div>
-
-            <!-- Upload QRIS Lain (Opsional) -->
-            <div>
-                <label class="block text-sm font-medium mb-2 text-slate-300">Ganti Scan QRIS (Opsional)</label>
-                <div class="flex items-center justify-center w-full">
-                    <label for="qrFileInput" class="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-slate-600 rounded-xl cursor-pointer bg-slate-900 hover:bg-slate-800 hover:border-emerald-500 transition duration-200">
-                        <div class="flex flex-col items-center justify-center">
-                            <p class="text-xs text-slate-400"><span class="font-semibold text-emerald-400">Klik untuk upload</span> gambar QRIS baru</p>
-                        </div>
-                        <input id="qrFileInput" type="file" accept="image/*" class="hidden" onchange="processQRImage(this)" />
-                    </label>
-                </div>
-                <p id="statusMessage" class="text-xs mt-2 text-center text-slate-400"></p>
-            </div>
-
-            <!-- Payload Input (Editable) -->
-            <div>
-                <div class="flex justify-between items-center mb-1">
-                    <label class="block text-sm font-medium text-slate-300">Payload QRIS Base</label>
-                    <span class="text-[10px] text-emerald-400 font-mono">Editable</span>
-                </div>
-                <textarea id="qrisInput" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-[11px] text-slate-300 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono break-all" oninput="generateDynamicQRIS()"></textarea>
-            </div>
-        </div>
+    <div class="max-w-sm w-full bg-slate-800 p-6 rounded-2xl shadow-2xl border border-slate-700 text-center">
+        <!-- Info Toko & Nominal -->
+        <h1 class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-1">TOKO SUKI</h1>
+        <p class="text-xs text-slate-500 mb-4">Silakan scan QRIS di bawah ini</p>
         
-        <div id="reader" class="hidden"></div>
+        <div id="nominalText" class="text-emerald-400 font-extrabold text-3xl mb-6">Rp 0</div>
+        
+        <!-- Gambar QR Code -->
+        <div class="bg-white p-4 rounded-2xl inline-block shadow-inner mb-6">
+            <div id="qrcode"></div>
+        </div>
+
+        <p class="text-[11px] text-slate-400">Pembayaran diproses secara otomatis sesuai nominal tagihan.</p>
     </div>
 
     <script>
         // Payload Default QRIS Toko Suki Anda
         const DEFAULT_PAYLOAD = "00020101021126570011ID.DANA.WWW011893600915303544414902090354441490303UMI51440014ID.CO.QRIS.WWW0215ID10266027894750303UMI5204549953033605802ID5909TOKO SUKI6015Kota Jakarta Pu610510210630417E0";
-        
-        const html5QrCode = new Html5Qrcode("reader");
 
         window.onload = function() {
-            // Set payload default Toko Suki ke textarea
-            document.getElementById('qrisInput').value = DEFAULT_PAYLOAD;
-
-            // 1. Cek Nominal dari Parameters URL
-            let amountFromURL = getAmountFromURL();
-
-            if (amountFromURL && amountFromURL > 0) {
-                document.getElementById('amountInput').value = amountFromURL;
-            } else {
-                // Default nominal 10.000 jika tidak ada parameter di URL
-                document.getElementById('amountInput').value = 10000;
-            }
-
-            // 2. Langsung generate QRIS Dinamis saat halaman dimuat
-            generateDynamicQRIS();
+            // Ambil nominal dari URL, default ke 0 jika tidak ada
+            let amount = getAmountFromURL() || 0;
+            generateDynamicQRIS(amount);
         };
 
         // Fungsi untuk mengambil angka nominal dari URL web
         function getAmountFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
-            
-            // Cek parameter ?amount=10000 atau ?nominal=10000
             let amount = urlParams.get('amount') || urlParams.get('nominal') || urlParams.get('rp');
             
-            // Jika tidak ada nama parameter, cek apakah formatnya langsung domain.com/?10000
             if (!amount) {
                 const searchStr = window.location.search.replace('?', '');
                 if (!isNaN(searchStr) && searchStr.trim() !== '') {
                     amount = searchStr;
                 }
             }
-
             return amount ? parseInt(amount, 10) : null;
         }
 
-        // Upload & Scan Gambar QRIS baru
-        function processQRImage(input) {
-            const statusMsg = document.getElementById('statusMessage');
-            if (!input.files || input.files.length === 0) return;
-
-            const imageFile = input.files[0];
-            statusMsg.innerText = "Membaca gambar...";
-
-            html5QrCode.scanFile(imageFile, true)
-                .then(decodedText => {
-                    document.getElementById('qrisInput').value = decodedText;
-                    statusMsg.innerHTML = '<span class="text-emerald-400">✓ Payload QRIS berhasil diperbarui!</span>';
-                    generateDynamicQRIS();
-                })
-                .catch(err => {
-                    statusMsg.innerHTML = '<span class="text-rose-400">Gagal membaca QR Code. Pastikan foto QR jelas.</span>';
-                });
-        }
-
-        // Parse TLV String QRIS (Tag-Length-Value)
+        // Parse TLV String QRIS
         function parseTLV(qrisString) {
             let tags = {};
             let i = 0;
@@ -149,7 +70,7 @@
             return tags;
         }
 
-        // Reconstruct TLV String secara berurutan
+        // Reconstruct TLV String
         function buildTLV(tags) {
             let result = "";
             let sortedKeys = Object.keys(tags).sort((a, b) => parseInt(a) - parseInt(b));
@@ -162,7 +83,7 @@
             return result;
         }
 
-        // Perhitungan CRC-16 CCITT (0xFFFF / Poly 0x1021)
+        // Perhitungan CRC-16 CCITT
         function calculateCRC16(data) {
             let crc = 0xFFFF;
             for (let i = 0; i < data.length; i++) {
@@ -174,73 +95,40 @@
             return hex.padStart(4, '0');
         }
 
-        // Generate QRIS Dinamis
-        function generateDynamicQRIS() {
-            let rawQRIS = document.getElementById('qrisInput').value.trim();
-            let amount = document.getElementById('amountInput').value.trim();
-
-            if (!rawQRIS) return;
-
+        // Generate QRIS Dinamis & Langsung Render
+        function generateDynamicQRIS(amount) {
             try {
-                // 1. Break down tag QRIS
-                let tags = parseTLV(rawQRIS);
+                let tags = parseTLV(DEFAULT_PAYLOAD);
 
-                // 2. Ubah Tag 01 (Initiation Method) dari 11 (Statis) ke 12 (Dinamis)
+                // Ubah ke QRIS Dinamis (01 = 12)
                 tags['01'] = '12';
-
-                // 3. Pastikan Tag 53 ada (Currency IDR = 360)
                 tags['53'] = '360';
 
-                // 4. Set/Update Tag 54 jika nominal diisi
-                if (amount && !isNaN(amount) && Number(amount) > 0) {
+                // Masukkan Nominal jika ada
+                if (amount > 0) {
                     tags['54'] = amount.toString();
                 } else {
                     delete tags['54'];
                 }
 
-                // 5. Susun ulang string QRIS secara terurut
-                let newPayload = buildTLV(tags);
+                let newPayload = buildTLV(tags) + "6304";
+                let finalQRIS = newPayload + calculateCRC16(newPayload);
 
-                // 6. Tambahkan Tag 6304 untuk slot CRC
-                newPayload += "6304";
-
-                // 7. Hitung CRC-16 baru
-                let crc = calculateCRC16(newPayload);
-                let finalQRIS = newPayload + crc;
-
-                // Render QR Code
+                // Render QR Code ukuran pas untuk discan
                 document.getElementById('qrcode').innerHTML = '';
                 new QRCode(document.getElementById('qrcode'), {
                     text: finalQRIS,
-                    width: 220,
-                    height: 220,
+                    width: 230,
+                    height: 230,
                     correctLevel: QRCode.CorrectLevel.M
                 });
 
-                let displayAmount = amount ? Number(amount).toLocaleString('id-ID') : '0';
-                document.getElementById('nominalText').innerText = 'Rp ' + displayAmount;
+                // Tampilkan nominal teks
+                document.getElementById('nominalText').innerText = 'Rp ' + amount.toLocaleString('id-ID');
 
             } catch (err) {
-                console.error("Format QRIS tidak valid", err);
+                console.error("Gagal memproses QRIS", err);
             }
-        }
-
-        // Download Gambar QR Code
-        function downloadQR() {
-            let canvas = document.querySelector('#qrcode canvas');
-            let img = document.querySelector('#qrcode img');
-            let imageSrc = img && img.src ? img.src : (canvas ? canvas.toDataURL("image/png") : null);
-
-            if (!imageSrc) {
-                alert('QR Code belum siap untuk diunduh.');
-                return;
-            }
-
-            let amount = document.getElementById('amountInput').value || 'dinamis';
-            let link = document.createElement('a');
-            link.download = `qris-toko-suki-${amount}.png`;
-            link.href = imageSrc;
-            link.click();
         }
     </script>
 </body>
