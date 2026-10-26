@@ -3,38 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pembayaran QRIS - TOKO SUKI</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>QRIS</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #ffffff;
+        }
+        #qrcode canvas, #qrcode img {
+            width: 90vw !important;
+            height: 90vw !important;
+            max-width: 450px;
+            max-height: 450px;
+            object-fit: contain;
+        }
+    </style>
 </head>
-<body class="bg-slate-900 text-slate-100 flex items-center justify-center min-h-screen p-4">
+<body>
 
-    <div class="max-w-sm w-full bg-slate-800 p-6 rounded-2xl shadow-2xl border border-slate-700 text-center">
-        <!-- Info Toko & Nominal -->
-        <h1 class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-1">TOKO SUKI</h1>
-        <p class="text-xs text-slate-500 mb-4">Silakan scan QRIS di bawah ini</p>
-        
-        <div id="nominalText" class="text-emerald-400 font-extrabold text-3xl mb-6">Rp 0</div>
-        
-        <!-- Gambar QR Code -->
-        <div class="bg-white p-4 rounded-2xl inline-block shadow-inner mb-6">
-            <div id="qrcode"></div>
-        </div>
-
-        <p class="text-[11px] text-slate-400">Pembayaran diproses secara otomatis sesuai nominal tagihan.</p>
-    </div>
+    <div id="qrcode"></div>
 
     <script>
-        // Payload Default QRIS Toko Suki Anda
         const DEFAULT_PAYLOAD = "00020101021126570011ID.DANA.WWW011893600915303544414902090354441490303UMI51440014ID.CO.QRIS.WWW0215ID10266027894750303UMI5204549953033605802ID5909TOKO SUKI6015Kota Jakarta Pu610510210630417E0";
 
         window.onload = function() {
-            // Ambil nominal dari URL, default ke 0 jika tidak ada
             let amount = getAmountFromURL() || 0;
             generateDynamicQRIS(amount);
         };
 
-        // Fungsi untuk mengambil angka nominal dari URL web
         function getAmountFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
             let amount = urlParams.get('amount') || urlParams.get('nominal') || urlParams.get('rp');
@@ -48,7 +53,6 @@
             return amount ? parseInt(amount, 10) : null;
         }
 
-        // Parse TLV String QRIS
         function parseTLV(qrisString) {
             let tags = {};
             let i = 0;
@@ -70,7 +74,6 @@
             return tags;
         }
 
-        // Reconstruct TLV String
         function buildTLV(tags) {
             let result = "";
             let sortedKeys = Object.keys(tags).sort((a, b) => parseInt(a) - parseInt(b));
@@ -83,7 +86,6 @@
             return result;
         }
 
-        // Perhitungan CRC-16 CCITT
         function calculateCRC16(data) {
             let crc = 0xFFFF;
             for (let i = 0; i < data.length; i++) {
@@ -95,16 +97,13 @@
             return hex.padStart(4, '0');
         }
 
-        // Generate QRIS Dinamis & Langsung Render
         function generateDynamicQRIS(amount) {
             try {
                 let tags = parseTLV(DEFAULT_PAYLOAD);
 
-                // Ubah ke QRIS Dinamis (01 = 12)
                 tags['01'] = '12';
                 tags['53'] = '360';
 
-                // Masukkan Nominal jika ada
                 if (amount > 0) {
                     tags['54'] = amount.toString();
                 } else {
@@ -114,18 +113,13 @@
                 let newPayload = buildTLV(tags) + "6304";
                 let finalQRIS = newPayload + calculateCRC16(newPayload);
 
-                // Render QR Code ukuran pas untuk discan
                 document.getElementById('qrcode').innerHTML = '';
                 new QRCode(document.getElementById('qrcode'), {
                     text: finalQRIS,
-                    width: 230,
-                    height: 230,
+                    width: 500,
+                    height: 500,
                     correctLevel: QRCode.CorrectLevel.M
                 });
-
-                // Tampilkan nominal teks
-                document.getElementById('nominalText').innerText = 'Rp ' + amount.toLocaleString('id-ID');
-
             } catch (err) {
                 console.error("Gagal memproses QRIS", err);
             }
